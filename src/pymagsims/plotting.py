@@ -277,3 +277,30 @@ def plot_ion_image_grid(
 
     fig.tight_layout()
     return fig, axes
+
+
+def plot_volume_slice(
+    volume,
+    label: str,
+    z: int,
+    log: bool = True,
+    cmap: str = "viridis",
+):
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    arr = volume.get(label)
+    img = arr[z]
+    data = np.log1p(img) if log else img
+
+    fig, ax = plt.subplots(figsize=(6, 6))
+    im = ax.imshow(data, cmap=cmap)
+
+    ax.set_title(f"{label}, slice {z}")
+    ax.set_xlabel("X pixel")
+    ax.set_ylabel("Y pixel")
+
+    fig.colorbar(im, ax=ax)
+    fig.tight_layout()
+
+    return fig, ax

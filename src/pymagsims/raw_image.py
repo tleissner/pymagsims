@@ -15,11 +15,17 @@ class SIMSRawImage:
     events: pd.DataFrame
     metadata: dict = field(default_factory=dict)
     name: str | None = None
+    shape_override: tuple[int, int] | None = None
 
     @classmethod
-    def from_fpd_raw(cls, path: str | Path, encoding: str = "latin1") -> "SIMSRawImage":
-        path = Path(path)
+    def from_fpd_raw(
+        cls,
+        path: str | Path,
+        encoding: str = "latin1",
+        shape: tuple[int, int] | None = None,
+    ) -> "SIMSRawImage":
 
+        path = Path(path)
         records = []
 
         with path.open("r", encoding=encoding) as f:
@@ -53,13 +59,14 @@ class SIMSRawImage:
             events=events,
             metadata=metadata,
             name=path.stem,
+            shape_override=shape,
         )
 
     @property
     def shape(self) -> tuple[int, int]:
-        """
-        Return image shape as (height, width).
-        """
+        if self.shape_override is not None:
+            return self.shape_override
+
         height = int(self.events["Y"].max() - self.events["Y"].min() + 1)
         width = int(self.events["X"].max() - self.events["X"].min() + 1)
         return height, width

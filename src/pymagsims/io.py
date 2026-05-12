@@ -372,3 +372,168 @@ def _parse_fpd_image_blocks(
         i += 1 + size
 
     return images
+
+
+def read_fpd_depth_profile_csv(
+    path,
+    encoding: str = "latin1",
+    n_channels: int = 12000,
+):
+    from pathlib import Path
+    import pandas as pd
+
+    from .spectrum import Spectrum
+    from .depth_profile import SIMSDepthProfile
+
+    path = Path(path)
+
+    with path.open("r", encoding=encoding) as f:
+        lines = f.readlines()
+
+    metadata = _parse_main_metadata(lines[:7])
+    roi_table = _parse_roi_block(lines[7:17])
+
+    end_idx = None
+    for i, line in enumerate(lines):
+        if line.strip().startswith("%end"):
+            end_idx = i
+            break
+
+    if end_idx is None:
+        raise ValueError("Could not find %end marker.")
+
+    spectrum_start = end_idx + 1
+    spectrum_end = spectrum_start + n_channels
+
+    spectrum_rows = []
+
+    for line in lines[spectrum_start:spectrum_end]:
+        parts = _clean_parts(line)
+
+        if len(parts) >= 3:
+            spectrum_rows.append(parts[:3])
+
+    spectrum_df = pd.DataFrame(
+        spectrum_rows,
+        columns=["Channel", "Mass", "Amplitude"],
+    )
+
+    spectrum_df = spectrum_df.apply(pd.to_numeric, errors="coerce").dropna()
+    spectrum_df["Channel"] = spectrum_df["Channel"].astype(int)
+
+    last_spectrum = Spectrum(
+        data=spectrum_df,
+        metadata=metadata.copy(),
+        roi_table=roi_table,
+        name=f"{path.stem}_last_spectrum",
+    )
+
+    profile_df = pd.read_csv(
+        path,
+        sep=";",
+        skiprows=spectrum_end,
+        encoding=encoding,
+    )
+
+    profile_df = profile_df.dropna(axis=1, how="all")
+    profile_df = profile_df.loc[
+        :, ~profile_df.columns.astype(str).str.contains("^Unnamed")
+    ]
+
+    profile_df = profile_df.apply(lambda col: pd.to_numeric(col, errors="coerce"))
+    profile_df = profile_df.dropna(axis=0, how="all")
+
+    return SIMSDepthProfile(
+        profiles=profile_df,
+        metadata=metadata,
+        roi_table=roi_table,
+        last_spectrum=last_spectrum,
+        name=path.stem,
+    )
+
+def read_fpd_depth_profile_raw(
+    path,
+    roi_table=None,
+    bins=None,
+    spectrum=None,
+    skip_initial: int = 0,
+    encoding: str = "latin1",
+):
+    from pathlib import Path
+    import numpy as np
+    import pandas as pd
+
+    from .depth_profile import SIMSDepthProfile
+    from .raw_image import mass_to_channel
+
+    path = Path(path)
+
+    hist = pd.read_csv(
+        path,
+        sep=";",
+        header=None,
+        encoding=encoding,
+    )
+
+    hist = hist.dropna(axis=1, how="all")
+    hist = hist.apply(pd.to_numeric, errors="coerce").fillna(0)
+
+    if skip_initial:
+        hist_used = hist.iloc[skip_initial:].reset_index(drop=True)
+    else:
+        hist_used = hist.reset_index(drop=True)
+
+    profiles = pd.DataFrame(
+        {
+            "Acquisition point": np.arange(1, len(hist_used) + 1),
+        }
+    )
+
+    source = bins if bins is not None else roi_table
+
+    if source is None:
+        profiles["Total"] = hist_used.sum(axis=1)
+    else:
+        for _, row in source.iterrows():
+            label = str(row.get("Name", row.get("label", "ROI")))
+
+            if "CH min" in row and "CH max" in row:
+                ch_min = int(row["CH min"])
+                ch_max = int(row["CH max"])
+            elif "ch_min" in row and "ch_max" in row:
+                ch_min = int(row["ch_min"])
+                ch_max = int(row["ch_max"])
+            elif "mass_min" in row and "mass_max" in row:
+                if spectrum is None:
+                    raise ValueError("spectrum is required for mass-based bins.")
+                ch_min = mass_to_channel(spectrum, float(row["mass_min"]))
+                ch_max = mass_to_channel(spectrum, float(row["mass_max"]))
+            else:
+                raise ValueError(
+                    "Bins/ROI table must contain CH min/CH max, "
+                    "ch_min/ch_max, or mass_min/mass_max."
+                )
+
+            if ch_max < ch_min:
+                ch_min, ch_max = ch_max, ch_min
+
+            col_min = max(ch_min - 1, 0)
+            col_max = min(ch_max - 1, hist_used.shape[1] - 1)
+
+            profiles[label] = hist_used.iloc[:, col_min:col_max + 1].sum(axis=1)
+
+    metadata = {
+        "source": "FPD depth profile raw histogram",
+        "n_histograms_total": int(hist.shape[0]),
+        "n_histograms_used": int(hist_used.shape[0]),
+        "n_channels": int(hist.shape[1]),
+        "skip_initial": int(skip_initial),
+    }
+
+    return SIMSDepthProfile(
+        profiles=profiles,
+        metadata=metadata,
+        roi_table=roi_table,
+        raw_histograms=hist_used,
+        name=path.stem,
+    )
