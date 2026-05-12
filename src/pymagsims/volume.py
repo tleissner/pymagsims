@@ -7,7 +7,13 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import re
 
+def natural_sort_key(path):
+    return [
+        int(text) if text.isdigit() else text.lower()
+        for text in re.split(r"(\d+)", str(path))
+    ]
 
 @dataclass
 class SIMSVolume:
@@ -27,7 +33,8 @@ class SIMSVolume:
     ) -> "SIMSVolume":
         from .raw_image import SIMSRawImage
 
-        paths = sorted([Path(p) for p in paths])
+        
+        paths = sorted([Path(p) for p in paths], key=natural_sort_key)
 
         stacks = {}
 
@@ -93,6 +100,8 @@ class SIMSVolume:
                 label: vol.sum(axis=(1, 2)),
             }
         )
+
+
     
     def merged_spectrum(self, label: str = "Total"):
         """

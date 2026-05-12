@@ -7,7 +7,13 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import re
 
+def natural_sort_key(path):
+    return [
+        int(text) if text.isdigit() else text.lower()
+        for text in re.split(r"(\d+)", str(path))
+    ]
 
 @dataclass
 class SIMSVolume:
@@ -23,10 +29,12 @@ class SIMSVolume:
         spectrum,
         bins,
         include_total: bool = True,
+        shape: tuple[int, int] | None = None,
     ) -> "SIMSVolume":
         from .raw_image import SIMSRawImage
 
-        paths = sorted([Path(p) for p in paths])
+        
+        paths = sorted([Path(p) for p in paths], key=natural_sort_key)
 
         stacks = {}
 
@@ -37,7 +45,7 @@ class SIMSVolume:
             stacks[str(b["label"])] = []
 
         for path in paths:
-            raw = SIMSRawImage.from_fpd_raw(path)
+            raw = SIMSRawImage.from_fpd_raw(path, shape=shape)
 
             if include_total:
                 stacks["Total"].append(raw.total_ion_image())
@@ -92,3 +100,15 @@ class SIMSVolume:
                 label: vol.sum(axis=(1, 2)),
             }
         )
+
+
+    
+    def merged_spectrum(self, label: str = "Total"):
+        """
+        Return depth-integrated intensity for one volume label.
+
+        For now this works for already binned volumes, not full raw histograms.
+        """
+        vol = self.get(label)
+
+        return vol.sum(axis=0)

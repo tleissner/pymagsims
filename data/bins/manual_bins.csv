@@ -1,0 +1,2 @@
+label,mass_min,mass_max,center_mass,max_intensity,integrated_intensity,n_points
+test,40.0,50.0,48.826906,21274.0,486112.0,763

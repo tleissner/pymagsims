@@ -135,23 +135,41 @@ class SIMSRawImage:
 
     def images_from_bins(
         self,
-        spectrum,
         bins,
+        spectrum=None,
         include_total: bool = True,
     ) -> dict[str, np.ndarray]:
         images = {}
-
+    
         if include_total:
             images["Total"] = self.total_ion_image()
-
+    
         for _, b in bins.iterrows():
             label = str(b["label"])
-
-            images[label] = self.image_from_mass_bin(
-                spectrum=spectrum,
-                mass_min=float(b["mass_min"]),
-                mass_max=float(b["mass_max"]),
-            )
+    
+            if "ch_min" in b and "ch_max" in b:
+                images[label] = self.image_from_channel_bin(
+                    ch_min=int(b["ch_min"]),
+                    ch_max=int(b["ch_max"]),
+                )
+    
+            elif "mass_min" in b and "mass_max" in b:
+                if spectrum is None:
+                    raise ValueError(
+                        "spectrum is required for mass-based bins. "
+                        "Use ch_min/ch_max for channel-only workflows."
+                    )
+    
+                images[label] = self.image_from_mass_bin(
+                    spectrum=spectrum,
+                    mass_min=float(b["mass_min"]),
+                    mass_max=float(b["mass_max"]),
+                )
+    
+            else:
+                raise ValueError(
+                    "Each bin must contain either ch_min/ch_max or mass_min/mass_max."
+                )
 
         return images
     
