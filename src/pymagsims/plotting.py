@@ -138,8 +138,8 @@ def plot_spectrum_with_element_markers(
         )
     """
 
-    if len(elements) > 3:
-        raise ValueError("Please provide at most three elements.")
+    if len(elements) > 7:
+        raise ValueError("Please provide at most seven elements.")
 
     fig, ax = plot_spectrum(spectrum, log_y=log_y, ax=ax)
 
@@ -390,8 +390,9 @@ def plot_array_slider(
 def plot_array_grid_slider(
     arrays: dict,
     log: bool = True,
-    colorscale: str = "Viridis",
-    ncols: int = 2,
+    colorscale="Viridis",
+    nrows: int | None = None,
+    ncols: int | None = None,
     width: int = 900,
     height: int = 850,
 ):
@@ -413,8 +414,8 @@ def plot_array_grid_slider(
     if len(labels) == 0:
         raise ValueError("No arrays provided.")
 
-    if len(labels) > 4:
-        raise ValueError("This helper is intended for up to 4 arrays.")
+    #if len(labels) > 4:
+    #    raise ValueError("This helper is intended for up to 4 arrays.")
 
     arrs = {label: np.asarray(arrays[label]) for label in labels}
 
@@ -429,8 +430,24 @@ def plot_array_grid_slider(
         raise ValueError(f"All arrays must have the same number of layers. Got: {shapes}")
 
     z_count = z_counts.pop()
-    nrows = int(np.ceil(len(labels) / ncols))
+    #nrows = int(np.ceil(len(labels) / ncols))
 
+    n_items = len(labels)
+
+    if nrows is None and ncols is None:
+        ncols = 2
+        nrows = int(np.ceil(n_items / ncols))
+    elif nrows is None:
+        nrows = int(np.ceil(n_items / ncols))
+    elif ncols is None:
+        ncols = int(np.ceil(n_items / nrows))
+    
+    if nrows * ncols < n_items:
+        raise ValueError(
+            f"Grid too small: nrows*ncols={nrows*ncols}, "
+            f"but {n_items} arrays were provided."
+        )
+    
     fig = make_subplots(
         rows=nrows,
         cols=ncols,
@@ -662,6 +679,10 @@ def plot_element_overlay_slider(
     colors: dict | None = None,
     width: int = 750,
     height: int = 750,
+    background_gamma: float = 1.8,
+    overlay_gamma: float = 0.5,
+    background_scale: float = 0.45,
+    overlay_scale: float = 1.0,
 ):
     """
     Plot total counts as grayscale background with colored element overlays.
@@ -706,6 +727,13 @@ def plot_element_overlay_slider(
     prepared_overlays = {
         label: prepare(arr)
         for label, arr in overlays.items()
+    }
+
+    bg = np.clip(bg ** background_gamma, 0, 1) * background_scale
+    
+    prepared_overlays = {
+        label: np.clip(arr ** overlay_gamma, 0, 1) * overlay_scale
+        for label, arr in prepared_overlays.items()
     }
 
     for label, arr in prepared_overlays.items():
