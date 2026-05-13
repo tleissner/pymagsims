@@ -52,3 +52,21 @@ def load_builtin_isotopes(max_atomic_number: int = 79) -> pd.DataFrame:
     return pd.DataFrame(rows).sort_values(
         ["atomic_number", "mass_number"]
     ).reset_index(drop=True)
+
+def filter_isotopes(
+    isotopes,
+    min_abundance: float = 0.5,
+    max_atomic_number: int | None = None,
+):
+    filtered = isotopes.copy()
+
+    filtered = filtered[
+        filtered["abundance"].fillna(0) >= min_abundance
+    ]
+
+    if max_atomic_number is not None:
+        filtered = filtered[
+            filtered["atomic_number"] <= max_atomic_number
+        ]
+
+    return filtered.reset_index(drop=True)

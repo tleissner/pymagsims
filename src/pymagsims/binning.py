@@ -172,3 +172,78 @@ def merge_overlapping_bins(bins: pd.DataFrame) -> pd.DataFrame:
             merged.append(current)
 
     return pd.DataFrame(merged)
+
+
+def merge_bins_by_element(bins):
+    """
+    Merge all bins belonging to the same element.
+    """
+
+    required = {"element", "ch_min", "ch_max"}
+    missing = required - set(bins.columns)
+
+    if missing:
+        raise ValueError(f"Missing required columns: {missing}")
+
+    merged = (
+        bins.groupby("element", as_index=False)
+        .agg(
+            label=("element", "first"),
+            ch_min=("ch_min", "min"),
+            ch_max=("ch_max", "max"),
+            mass_min=("mass_min", "min"),
+            mass_max=("mass_max", "max"),
+        )
+    )
+
+    return merged
+
+
+def mass_to_channel_from_calibration(calibration_df, mass):
+    """
+    Find the detector channel closest to a given mass.
+    """
+
+    idx = (calibration_df["Mass"] - mass).abs().idxmin()
+    return int(calibration_df.loc[idx, "Channel"])
+
+
+def mass_bins_to_channel_bins(mass_bins, calibration_df):
+    """
+    Convert mass-domain bins to channel-domain bins using a calibration table.
+
+    Required mass_bins columns:
+        label, mass_min, mass_max
+
+    Required calibration_df columns:
+        Channel, Mass
+    """
+
+    required_bins = {"mass_min", "mass_max"}
+    required_cal = {"Channel", "Mass"}
+
+    missing_bins = required_bins - set(mass_bins.columns)
+    missing_cal = required_cal - set(calibration_df.columns)
+
+    if missing_bins:
+        raise ValueError(f"Missing required bin columns: {missing_bins}")
+
+    if missing_cal:
+        raise ValueError(f"Missing required calibration columns: {missing_cal}")
+
+    converted = mass_bins.copy()
+
+    converted["ch_min"] = converted["mass_min"].apply(
+        lambda m: mass_to_channel_from_calibration(calibration_df, m)
+    )
+    converted["ch_max"] = converted["mass_max"].apply(
+        lambda m: mass_to_channel_from_calibration(calibration_df, m)
+    )
+
+    ch_low = converted[["ch_min", "ch_max"]].min(axis=1)
+    ch_high = converted[["ch_min", "ch_max"]].max(axis=1)
+
+    converted["ch_min"] = ch_low.astype(int)
+    converted["ch_max"] = ch_high.astype(int)
+
+    return converted

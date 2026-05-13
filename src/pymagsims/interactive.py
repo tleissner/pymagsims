@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import ipywidgets as widgets
@@ -288,3 +289,83 @@ def manual_peak_binner_interactive(spectrum, log_y=False, xlim=None):
     redraw()
 
     return result
+
+
+def plot_volume_slider(volume, label="Total", log=True, colorscale="Viridis"):
+    arr = volume.get(label)
+    arr_plot = np.log1p(arr) if log else arr
+    z_count = arr_plot.shape[0]
+
+    fig = go.Figure()
+
+    for z in range(z_count):
+        fig.add_trace(
+            go.Heatmap(
+                z=arr_plot[z],
+                colorscale=colorscale,
+                visible=(z == 0),
+                colorbar=dict(title="log(1 + counts)" if log else "counts"),
+            )
+        )
+
+    steps = []
+    for z in range(z_count):
+        steps.append(
+            dict(
+                method="update",
+                args=[
+                    {"visible": [i == z for i in range(z_count)]},
+                    {"title": f"{label} — layer {z}"}
+                ],
+                label=str(z),
+            )
+        )
+
+    fig.update_layout(
+        title=f"{label} — layer 0",
+        xaxis_title="X pixel",
+        yaxis_title="Y pixel",
+        yaxis=dict(scaleanchor="x", autorange="reversed"),
+        width=700,
+        height=700,
+        sliders=[dict(active=0, currentvalue={"prefix": "Layer: "}, pad={"t": 50}, steps=steps)],
+    )
+
+    return fig
+
+
+def plot_volume_label_slider(
+    volume,
+    label: str,
+    log: bool = True,
+    colorscale: str = "Magma",
+):
+    """
+    Plot a 3D volume label using the Plotly layer slider.
+
+    Parameters
+    ----------
+    volume:
+        SIMSVolume object.
+    label:
+        Exact label, e.g. "Au", "Si", "Total".
+    """
+
+    matches = [
+        existing_label
+        for existing_label in volume.labels()
+        if existing_label.lower() == label.lower()
+    ]
+
+    if not matches:
+        raise ValueError(
+            f"No label found for '{label}'. "
+            f"Available labels are: {volume.labels()}"
+        )
+
+    return plot_volume_slider(
+        volume,
+        label=matches[0],
+        log=log,
+        colorscale=colorscale,
+    )

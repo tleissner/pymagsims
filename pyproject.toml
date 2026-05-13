@@ -21,6 +21,7 @@ dependencies = [
     "periodictable>=2.1.0",
     "plotly>=6.7.0",
     "scipy>=1.17.1",
+    "tifffile>=2026.5.2",
 ]
 
 [project.optional-dependencies]

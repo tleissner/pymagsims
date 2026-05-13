@@ -15,6 +15,7 @@ def natural_sort_key(path):
         for text in re.split(r"(\d+)", str(path))
     ]
 
+
 @dataclass
 class SIMSVolume:
     volumes: dict[str, np.ndarray]
@@ -112,3 +113,39 @@ class SIMSVolume:
         vol = self.get(label)
 
         return vol.sum(axis=0)
+
+
+    def summed_by_element(self, bins, element: str):
+        """
+        Sum all reconstructed 3D volumes belonging to one element.
+    
+        This avoids merging channel ranges before reconstruction, which could
+        accidentally include unrelated peaks between isotope peaks.
+        """
+    
+        required = {"label", "element"}
+        missing = required - set(bins.columns)
+    
+        if missing:
+            raise ValueError(f"Missing required bin columns: {missing}")
+    
+        element_bins = bins[bins["element"] == element]
+    
+        if element_bins.empty:
+            raise ValueError(f"No bins found for element '{element}'.")
+    
+        arrays = []
+    
+        for label in element_bins["label"]:
+            if label in self.volumes:
+                arrays.append(self.volumes[label])
+    
+        if not arrays:
+            raise ValueError(
+                f"No reconstructed volumes found for element '{element}'. "
+                f"Available volume labels: {self.labels()}"
+            )
+    
+        return sum(arrays)
+
+    
