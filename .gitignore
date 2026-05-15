@@ -15,5 +15,6 @@ data/export/
 exports/
 *.tif
 *.tiff
+*.vti
 .ipynb_checkpoints/
 **/.ipynb_checkpoints/
