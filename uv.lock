@@ -2162,9 +2162,11 @@ dependencies = [
     { name = "pandas" },
     { name = "periodictable" },
     { name = "plotly" },
+    { name = "pyvista" },
     { name = "scipy" },
     { name = "tifffile", version = "2026.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "tifffile", version = "2026.5.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "vtk" },
 ]
 
 [package.optional-dependencies]
@@ -2201,9 +2203,11 @@ requires-dist = [
     { name = "pandas", specifier = ">=2.2" },
     { name = "periodictable", specifier = ">=2.0" },
     { name = "plotly", specifier = ">=5.20" },
+    { name = "pyvista", specifier = ">=0.48.2" },
     { name = "pyvista", marker = "extra == 'paraview'", specifier = ">=0.44" },
     { name = "scipy", specifier = ">=1.11" },
     { name = "tifffile", specifier = ">=2024.0" },
+    { name = "vtk", specifier = ">=9.6.1" },
     { name = "vtk", marker = "extra == 'paraview'", specifier = ">=9.3" },
 ]
 provides-extras = ["paraview", "notebooks"]
