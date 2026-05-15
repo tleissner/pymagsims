@@ -1,0 +1,6 @@
+CSV_3D_FILE=../data/202505077-MEMS-011_neg_500mT_3dimage.csv
+RAW_LAYER_DIR=../data/3d
+IMAGE_SHAPE=(256, 256)
+N_RAW_LAYERS=17
+MASS_BIN_FILE=../data/bins/mass_bins_from_3d_csv_calibration.csv
+CHANNEL_BIN_FILE=../data/bins/channel_bins_from_3d_csv_calibration.csv

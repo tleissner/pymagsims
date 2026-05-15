@@ -6,3 +6,4 @@ data/**/*.raw filter=lfs diff=lfs merge=lfs -text
 data/**/*.csv filter=lfs diff=lfs merge=lfs -text
 tests/data/**/*.raw filter=lfs diff=lfs merge=lfs -text
 tests/data/**/*.csv filter=lfs diff=lfs merge=lfs -text
+*.vti filter=lfs diff=lfs merge=lfs -text
